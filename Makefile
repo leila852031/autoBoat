@@ -76,6 +76,7 @@ OBJS += \
     $(PWD)/CORTEX_M4F_STM32_DISCOVERY/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.o \
     $(PWD)/CORTEX_M4F_STM32_DISCOVERY/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.o \
     $(PWD)/CORTEX_M4F_STM32_DISCOVERY/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_exti.o \
+	$(PWD)/CORTEX_M4F_STM32_DISCOVERY/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.o \
     $(PWD)/Utilities/STM32F429I-Discovery/stm32f429i_discovery.o \
     #$(PWD)/CORTEX_M4F_STM32_DISCOVERY/stm32f4xx_it.o
 
