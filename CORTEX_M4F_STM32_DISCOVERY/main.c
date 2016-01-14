@@ -38,13 +38,14 @@
 /* Private function prototypes -----------------------------------------------*/
 void RCC_Configuration(void);
 void GPIO_Configuration(void);
+void TIM_Configuration(void);
 void Boat( void* pvParameters );
 
 int main( void )
 {	
 	
 	RCC_Configuration();
-//	TIM_Configuration();
+	TIM_Configuration();
 	GPIO_Configuration();
 	xTaskCreate( Boat, (signed char*)"Boat", 128, NULL, tskIDLE_PRIORITY+1, NULL );
 	vTaskStartScheduler();
@@ -57,8 +58,8 @@ int main( void )
   */
 void RCC_Configuration(void)
 {
-   // RCC Configuration
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOG, ENABLE);
+   RCC_AHB1PeriphClockCmd(  RCC_AHB1Periph_GPIOD , ENABLE );
+   RCC_APB1PeriphClockCmd( RCC_APB1Periph_TIM4, ENABLE );
 }
 
 /**
@@ -68,25 +69,81 @@ void RCC_Configuration(void)
   */
 void GPIO_Configuration(void)
 {
-    // GPIO Configuration
-	// LED3 (Green): GPIO_Pin_13, LED4 (Red): GPIO_Pin_14
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_Init(GPIOG, &GPIO_InitStructure);
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_StructInit(&GPIO_InitStructure); // Reset init structure
+ 
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource13, GPIO_AF_TIM4);
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource14, GPIO_AF_TIM4);
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource15, GPIO_AF_TIM4);
+      
+
+    // Setup Blue & Green LED on STM32-Discovery Board to use PWM.
+    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15; //PD12->LED3 PD13->LED4 PD14->LED5 PD15->LED6
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;            // Alt Function - Push Pull
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOD, &GPIO_InitStructure );
 }
 
+/**
+  * @brief  configure the TIM4 for PWM mode
+  * @param  None
+  * @retval None
+  */
+void TIM_Configuration(void)
+{
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
+    TIM_OCInitTypeDef TIM_OCInitStruct;
+
+    // Let PWM frequency equal 10kHz.
+    // Let period equal 1680. Therefore, timer runs from zero to 1680.
+    // Solving for prescaler gives 5.
+    TIM_TimeBaseStructInit( &TIM_TimeBaseInitStruct );
+    TIM_TimeBaseInitStruct.TIM_ClockDivision = TIM_CKD_DIV4;
+    TIM_TimeBaseInitStruct.TIM_Period = 1680 - 1;   
+    TIM_TimeBaseInitStruct.TIM_Prescaler = 5 - 1; 
+    TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Up;    
+    TIM_TimeBaseInit( TIM4, &TIM_TimeBaseInitStruct );
+    
+    TIM_OCStructInit( &TIM_OCInitStruct );
+    TIM_OCInitStruct.TIM_OutputState = TIM_OutputState_Enable;
+    TIM_OCInitStruct.TIM_OCMode = TIM_OCMode_PWM1;
+    
+    // Initial duty cycle equals 0%. Value can range from zero to 65535.
+    //TIM_Pulse = TIM4_CCR1 register (16 bits)
+    TIM_OCInitStruct.TIM_Pulse = 16800; //(0=Always Off, 65535=Always On)
+ 
+    TIM_OC1Init( TIM4, &TIM_OCInitStruct ); // Channel 1  LED
+    TIM_OC2Init( TIM4, &TIM_OCInitStruct ); // Channel 2  LED
+    TIM_OC3Init( TIM4, &TIM_OCInitStruct ); // Channel 3  LED
+    TIM_OC4Init( TIM4, &TIM_OCInitStruct ); // Channel 4  LED
+ 
+    TIM_Cmd( TIM4, ENABLE );
+	
+}
+
+/**
+  * @brief  freertos pwm task
+  * @param  pvParameters
+  * @retval None
+  */
 void Boat( void* pvParameters )
 {
-	GPIO_ToggleBits(GPIOG, GPIO_Pin_14);
-	while(1)
-	{
-		GPIO_ToggleBits(GPIOG, GPIO_Pin_13);
-		GPIO_ToggleBits(GPIOG, GPIO_Pin_14);
+	volatile int i;
+	while(1)  // Do not exit
+  {
+  	
+    TIM4->CCR1 = 504 ; // duty cycle = 30%
+	for(i=0;i<10000;i++); // delay
+    TIM4->CCR2 = 840; // duty cycle = 50%
+	for(i=0;i<10000;i++); // delay
+    TIM4->CCR3 = 1176; // duty cycle = 70%
+	for(i=0;i<10000;i++); // delay
+    TIM4->CCR4 = 1512; // duty cycle = 90%
+    
 
-		vTaskDelay(1000);
-	}
+    vTaskDelay(1000);  // delay
+  }
 }
